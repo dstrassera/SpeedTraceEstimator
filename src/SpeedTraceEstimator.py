@@ -4,13 +4,17 @@ import matplotlib.pyplot as plt
 
 from Classification_MNIST import Classification
 from BoundingBox_Image import BoudingBox
+from filterpy.kalman import KalmanFilter
+from filterpy.common import Q_discrete_white_noise
 
 
 class SpeedTraceEstimator():
+    varR = 1.
+    varQ = 0.5
 
     def train(model=1):
         cl = Classification()
-        cl.loadData("mnist_784", split_ratio=0.80)
+        cl.loadData("mnist_784", test_ratio=0.80)
         cl.trainModel(model=model)
         # sample = cl.getX_test()[36000]
         # print(np.shape(sample))
@@ -22,6 +26,7 @@ class SpeedTraceEstimator():
         OFFSET = 5
 
         bb = BoudingBox.run(image, bImageRead=bImageRead)
+
         arrDigit = [0] * len(bb)
         for i in range(0, len(bb)):
             image = bb[i]
@@ -52,12 +57,26 @@ class SpeedTraceEstimator():
         FPS_VIDEO = 25
         cl = SpeedTraceEstimator.train(model=1)
 
+        # KF instance and initialization
+        f = KalmanFilter(dim_x=2, dim_z=1)
+        varR = self.varR
+        varQ = self.varQ
+        f.x = np.array([[2.],    # position
+                        [0.]])   # velocity
+        f.F = np.array([[1., 1.],  # transition state matrix
+                        [0., 1.]])
+        f.H = np.array([[1., 0.]])  # state measure mat
+        f.P = np.array([[1000.,    0.],  # just P init
+                        [0., 1000.]])
+        f.R = np.array([[varR]])  # measure noise cov mat
+        f.Q = Q_discrete_white_noise(dim=2, dt=0.1, var=varQ)  # noise cov mat
+
         vidObj = cv2.VideoCapture(videoPath)
         nFrameStart = tStart*FPS_VIDEO
         nFrameEnd = tEnd*FPS_VIDEO
-
         arrSample = []
         arrEstimation = []
+        arrEstimationKF = []
 
         success = 1
         i = 0
@@ -79,11 +98,25 @@ class SpeedTraceEstimator():
                 # method call for each frame
                 estimation = SpeedTraceEstimator.estimate(imageCropped, cl, bImageRead=0)
                 arrEstimation.append(estimation)
+                # apply KF
+                z = estimation  # measure
+                f.predict()
+                f.update(z)
+                x = f.x  # estimation from KF
+                arrEstimationKF.append(x[0][0])
+
             i += 1
         # plot the result of the Estimtion
         plt.figure()
-        plt.plot(arrSample, arrEstimation)
+        plt.plot(arrSample, arrEstimation, label='measure', color='blue')
+        plt.plot(arrSample, arrEstimationKF, label='estimation_KF', color='red', linewidth=3)
+        plt.legend()
+        plt.title('Speed Trace Estimation')
+        plt.xlabel('Frame Sample')
+        plt.ylabel('Speed kph')
         plt.show()
+
+
 if __name__ == '__main__':
     image = 'speed.png'
     dte = SpeedTraceEstimator()
