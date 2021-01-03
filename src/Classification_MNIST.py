@@ -54,10 +54,9 @@ class Classification():
             self.clf = make_pipeline(StandardScaler(), RandomForestClassifier(n_estimators=10))
             modelType = 'RandForest'
         elif model == 4:
-            # self.clf = svm.SVC(kernel='linear', C=1, decision_function_shape='ovo')
-            # self.clf = svm.SVC(kernel='poly', degree=3, C=1, decision_function_shape='ovo')
-            # self.clf = svm.SVC(kernel='rbf', gamma=1, C=1, decision_function_shape='ovo')
             self.clf = make_pipeline(StandardScaler(), svm.SVC(kernel='linear', C=1, decision_function_shape='ovo'))
+            # self.clf = make_pipeline(StandardScaler(), svm.SVC(kernel='poly', degree=3, C=1, decision_function_shape='ovo'))
+            # self.clf = make_pipeline(StandardScaler(), svm.SVC(kernel='rbf', gamma=1, C=1, decision_function_shape='ovo'))
             modelType = 'Support Vectore Machine'
         # Use pipeline to Standardize data
         self.clf.fit(self.X_train, self.y_train)
@@ -102,7 +101,7 @@ class Classification():
 if __name__ == '__main__':
     cl = Classification()
     cl.loadData("mnist_784", test_ratio=0.80)
-    cl.trainModel(model=3)
+    cl.trainModel(model=4)
     cl.crossVal()
     # listSample = [6000, 1600, 2600, 3600, 4600]
     # for sample in listSample:

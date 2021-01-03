@@ -40,7 +40,7 @@ class BoudingBox():
         for i in range(0, len(arrBBox)):
             x, y, w, h = arrBBox[i]
             # print(np.shape(imageBinary))
-            croppedImage = imageBinary[y:y+h, x:x+w]
+            croppedImage = imageGray[y:y+h, x:x+w]  # WARNING: crop the Gray Scale (as in MNIST) 
             # print(np.shape(croppedImage))
             # cv2.imshow('Features', croppedImage)
             # arrCroppedImage = np.append(arrCroppedImage, croppedImage)

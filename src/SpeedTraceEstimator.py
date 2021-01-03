@@ -11,10 +11,11 @@ from filterpy.common import Q_discrete_white_noise
 class SpeedTraceEstimator():
     varR = 1.
     varQ = 0.5
+    test_ratio = 0.20
 
-    def train(model=1):
+    def train(model=1, test_ratio=0.20):
         cl = Classification()
-        cl.loadData("mnist_784", test_ratio=0.80)
+        cl.loadData("mnist_784", test_ratio=test_ratio)
         cl.trainModel(model=model)
         # sample = cl.getX_test()[36000]
         # print(np.shape(sample))
@@ -55,7 +56,7 @@ class SpeedTraceEstimator():
 
     def readVideo(self, videoPath, tStart=0, tEnd=1, downSample=1, model=1):
         FPS_VIDEO = 25
-        cl = SpeedTraceEstimator.train(model=1)
+        cl = SpeedTraceEstimator.train(model=1, test_ratio=self.test_ratio)
 
         # KF instance and initialization
         f = KalmanFilter(dim_x=2, dim_z=1)
