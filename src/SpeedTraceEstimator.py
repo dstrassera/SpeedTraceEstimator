@@ -2,16 +2,22 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-from Classification_MNIST import Classification
-from BoundingBox_Image import BoudingBox
 from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
+from sklearn.metrics import mean_absolute_error
+
+from Classification_MNIST import Classification
+from BoundingBox_Image import BoudingBox
 
 
 class SpeedTraceEstimator():
-    varR = 1.
-    varQ = 0.5
+    FPS_VIDEO = 25
+    varR = 3
+    varQ = 10
     test_ratio = 0.20
+    # labelled data
+    labelled_downSample = 50
+    labelled_data = [266, 286, 168, 216, 254, 269, 275, 286, 246, 121, 114, 105, 72, 156, 235, 268, 296, 324, 145, 71, 116, 192, 250, 286, 306, 318, 246, 103, 126, 158, 122, 165, 233, 263, 274, 110, 129, 127, 145, 174, 236, 217, 246, 140]
 
     def train(model=1, test_ratio=0.20):
         cl = Classification()
@@ -42,6 +48,8 @@ class SpeedTraceEstimator():
             x0, x1 = leftOffset, leftOffset+imageResized.shape[1]
             imageBlackBox[y0: y1, x0: x1] = imageResized
             imageResizedReshaped = imageBlackBox.reshape(np.power(H_IMG, 2))
+            # plt.imshow(imageBlackBox, cmap='gray')
+            # plt.show()
             # sample = cl.getX_test()[36000]
             sample = imageResizedReshaped
             digit = int(cl.predict(sample, 0)[0], base=10)
@@ -55,7 +63,6 @@ class SpeedTraceEstimator():
         return estimation
 
     def readVideo(self, videoPath, tStart=0, tEnd=1, downSample=1, model=1):
-        FPS_VIDEO = 25
         cl = SpeedTraceEstimator.train(model=1, test_ratio=self.test_ratio)
 
         # KF instance and initialization
@@ -73,8 +80,8 @@ class SpeedTraceEstimator():
         f.Q = Q_discrete_white_noise(dim=2, dt=0.1, var=varQ)  # noise cov mat
 
         vidObj = cv2.VideoCapture(videoPath)
-        nFrameStart = tStart*FPS_VIDEO
-        nFrameEnd = tEnd*FPS_VIDEO
+        nFrameStart = tStart*self.FPS_VIDEO
+        nFrameEnd = tEnd*self.FPS_VIDEO
         arrSample = []
         arrEstimation = []
         arrEstimationKF = []
@@ -107,10 +114,27 @@ class SpeedTraceEstimator():
                 arrEstimationKF.append(x[0][0])
 
             i += 1
+
+        # labelled data
+        step = self.labelled_downSample
+        stop = len(self.labelled_data)
+        arrSampleLabelled = np.arange(0, stop*step, step)
+
+        # subsample estimation as the labelled data
+        if ((self.labelled_downSample % downSample) == 0):
+            downSample_ratio = round(self.labelled_downSample/downSample)
+            # numpy slicing [start:stop:step]
+            arrEstimationKF_sub = arrEstimationKF[0:len(arrEstimationKF):downSample_ratio]
+            MAE = round(mean_absolute_error(self.labelled_data, arrEstimationKF_sub), 1)
+            print('Mean Absolute Error: ', MAE)
+        else:
+            print('CANT CALCULATE ERROR IF DOWNSAMPLE OF LABELLED IS A SUB')
+
         # plot the result of the Estimtion
         plt.figure()
         plt.plot(arrSample, arrEstimation, label='measure', color='blue')
         plt.plot(arrSample, arrEstimationKF, label='estimation_KF', color='red', linewidth=3)
+        plt.plot(arrSampleLabelled, self.labelled_data, 'go', label='labelled')
         plt.legend()
         plt.title('Speed Trace Estimation')
         plt.xlabel('Frame Sample')
